@@ -1,7 +1,18 @@
 # Coach - Running Coach Integral
 
 ## Visión
-Aplicación de coaching integral para corredores de medio maratón (21K) y maratón (42K). El running es el eje central; el entrenamiento de fuerza y la nutrición están diseñados para optimizar el rendimiento en carrera.
+Aplicación de coaching integral para corredores de medio maratón (21K) y maratón (42K).
+
+**Objetivo dual:** Mejorar rendimiento en carrera **sin perder masa muscular**, y ganar músculo gradualmente. El running es el eje central, pero la fuerza y nutrición están optimizadas para preservar/construir músculo mientras se mejora la capacidad aeróbica.
+
+## Datos del Usuario
+La aplicación recibe y trackea:
+- **Peso corporal** (kg) - seguimiento periódico
+- **Grasa corporal** (%) - para calcular masa magra
+- **Altura** (cm)
+- **Edad**
+- **Frecuencia cardíaca** (reposo y máxima)
+- **Objetivos** (carrera meta, tiempo objetivo)
 
 ## Módulos
 
@@ -13,7 +24,9 @@ Aplicación de coaching integral para corredores de medio maratón (21K) y marat
 
 ### 2. Entrenador de Fuerza (Complementario)
 - Rutinas de gimnasio **en función del plan de running**
+- **Objetivo: preservar masa muscular y ganar fuerza gradualmente**
 - Fuerza funcional para corredores (core, glúteos, estabilidad)
+- Hipertrofia controlada (sin interferir con running)
 - Prevención de lesiones
 - Ajuste de volumen según fase de entrenamiento (base, build, peak, taper)
 - Sincronización con Hevy para tracking
@@ -21,10 +34,13 @@ Aplicación de coaching integral para corredores de medio maratón (21K) y marat
 ### 3. Asistente Nutricional (Complementario)
 - Logging de alimentos consumidos
 - Cálculo de macros según fase de entrenamiento
+- **Proteína suficiente para preservar/ganar músculo** (1.6-2.2g/kg)
 - Propuestas de dietas para:
-  - Días de entrenamiento largo
+  - Días de entrenamiento largo (más carbohidratos)
+  - Días de fuerza (más proteína)
   - Días de recuperación
   - Semana de carrera (carb loading)
+- Balance calórico según objetivo (mantener peso, recomp, mini-cut)
 - Hidratación y suplementación
 - Base de datos via OpenNutrition
 

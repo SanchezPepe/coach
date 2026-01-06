@@ -3,11 +3,9 @@
  * Core module - Training plans for 21K and 42K races
  */
 
-export interface RaceGoal {
-  distance: '21K' | '42K';
-  targetDate: Date;
-  targetTime?: string; // e.g., "1:45:00" for 21K
-}
+import type { RaceGoal } from '../types';
+
+export type { RaceGoal };
 
 export interface TrainingPhase {
   name: 'base' | 'build' | 'peak' | 'taper';
