@@ -1,9 +1,16 @@
-# Coach - Running Coach Integral
+# Coach - Entrenador Integral
 
 ## Visión
-Aplicación de coaching integral para corredores de medio maratón (21K) y maratón (42K).
+Aplicación de coaching integral para deportistas con múltiples objetivos: rendimiento deportivo, composición corporal, fuerza, resistencia, o cualquier combinación de estos.
 
-**Objetivo dual:** Mejorar rendimiento en carrera **sin perder masa muscular**, y ganar músculo gradualmente. El running es el eje central, pero la fuerza y nutrición están optimizadas para preservar/construir músculo mientras se mejora la capacidad aeróbica.
+**Filosofía:** Los tres pilares (cardio/resistencia, fuerza, nutrición) trabajan de forma sinérgica y se adaptan según el objetivo principal del usuario. Ningún módulo es "secundario" - cada uno puede ser el foco según las metas individuales.
+
+## Objetivos Soportados
+- **Rendimiento en carrera**: 5K, 10K, 21K, 42K, ultra, trail
+- **Fuerza e hipertrofia**: ganar músculo, aumentar fuerza máxima
+- **Composición corporal**: perder grasa, recomposición, definición
+- **Resistencia general**: mejorar capacidad aeróbica
+- **Objetivos híbridos**: correr sin perder músculo, ganar fuerza sin perder cardio, etc.
 
 ## Datos del Usuario
 La aplicación recibe y trackea:
@@ -12,56 +19,57 @@ La aplicación recibe y trackea:
 - **Altura** (cm)
 - **Edad**
 - **Frecuencia cardíaca** (reposo y máxima)
-- **Objetivos** (carrera meta, tiempo objetivo)
+- **Objetivos** (definidos por el usuario)
+- **Preferencias** (días disponibles, equipamiento, restricciones)
 
 ## Módulos
 
-### 1. Entrenador de Running (Core)
-- Planes de entrenamiento para 21K y 42K
+### 1. Entrenador de Cardio/Resistencia
+- Planes de entrenamiento para cualquier distancia
 - Seguimiento de actividades via Strava
 - Análisis de ritmos, zonas cardíacas, progresión
 - Periodización y tapering pre-carrera
+- Soporte para running, ciclismo, natación, etc.
 
-### 2. Entrenador de Fuerza (Complementario)
-- Rutinas de gimnasio **en función del plan de running**
-- **Objetivo: preservar masa muscular y ganar fuerza gradualmente**
-- Fuerza funcional para corredores (core, glúteos, estabilidad)
-- Hipertrofia controlada (sin interferir con running)
+### 2. Entrenador de Fuerza
+- Rutinas de gimnasio adaptadas al objetivo
+- Programas de hipertrofia, fuerza, o funcional
+- Fuerza para deportistas (complemento a cardio)
 - Prevención de lesiones
-- Ajuste de volumen según fase de entrenamiento (base, build, peak, taper)
+- Ajuste de volumen según fase y objetivo principal
 - Sincronización con Hevy para tracking
 
-### 3. Asistente Nutricional (Complementario)
+### 3. Asistente Nutricional
 - Logging de alimentos consumidos
-- Cálculo de macros según fase de entrenamiento
-- **Proteína suficiente para preservar/ganar músculo** (1.6-2.2g/kg)
+- Cálculo de macros según objetivo y actividad
+- **Proteína ajustada al objetivo** (1.6-2.2g/kg para preservar/ganar músculo)
 - Propuestas de dietas para:
-  - Días de entrenamiento largo (más carbohidratos)
-  - Días de fuerza (más proteína)
+  - Días de entrenamiento intenso
+  - Días de fuerza
   - Días de recuperación
-  - Semana de carrera (carb loading)
-- Balance calórico según objetivo (mantener peso, recomp, mini-cut)
+  - Preparación para competencias
+- Balance calórico según objetivo (déficit, mantenimiento, superávit)
 - Hidratación y suplementación
 - Base de datos via OpenNutrition
 
 ## Integraciones MCP
 | Servicio | Uso |
 |----------|-----|
-| **Strava** | Actividades de running, métricas, historial |
+| **Strava** | Actividades cardio, métricas, historial |
 | **Hevy** | Entrenamientos de fuerza, progresión de pesos |
 | **OpenNutrition** | Búsqueda de alimentos, valores nutricionales |
 
 ## Filosofía de Integración
 ```
 ┌─────────────────────────────────────────┐
-│           OBJETIVO DE CARRERA           │
-│            (21K o 42K)                  │
+│         OBJETIVO DEL USUARIO            │
+│   (definido y ajustable en el tiempo)   │
 └─────────────────┬───────────────────────┘
                   │
     ┌─────────────┼─────────────┐
     ▼             ▼             ▼
 ┌───────┐   ┌──────────┐   ┌──────────┐
-│Running│   │  Fuerza  │   │Nutrición │
+│Cardio │   │  Fuerza  │   │Nutrición │
 │(Strava)│   │  (Hevy)  │   │(OpenNut) │
 └───────┘   └──────────┘   └──────────┘
     │             │             │
@@ -95,8 +103,8 @@ npm test             # Ejecutar tests
 ```
 src/
   index.ts              # Entry point
-  running/              # Planes, análisis de carrera
-  strength/             # Rutinas de gym para corredores
+  running/              # Cardio, planes, análisis
+  strength/             # Rutinas de gym
   nutrition/            # Logging, dietas, macros
   integrations/         # Clientes MCP (Strava, Hevy, OpenNutrition)
   types/                # Tipos compartidos
