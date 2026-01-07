@@ -4,7 +4,7 @@
  * Focus: Flexible macros based on goal type (endurance, strength, body comp)
  */
 
-import type { Goal, BodyCompFocus } from '../types';
+import type { Goal } from '../types';
 import { isEnduranceGoal, isStrengthGoal, isBodyCompGoal } from '../types';
 
 export interface FoodEntry {
