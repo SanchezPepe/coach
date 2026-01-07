@@ -10,7 +10,6 @@ import {
   Edit2,
   Save,
   X,
-  Link,
   XCircle,
   CheckCircle,
   Apple,
@@ -89,6 +88,11 @@ export function Profile() {
   const [showHevyInput, setShowHevyInput] = useState(false)
   const [hevyApiKey, setHevyApiKey] = useState('')
 
+  // Strava tokens state (for manual input)
+  const [showStravaInput, setShowStravaInput] = useState(false)
+  const [stravaAccessToken, setStravaAccessToken] = useState('')
+  const [stravaRefreshToken, setStravaRefreshToken] = useState('')
+
   // Initialize edit values when athlete changes
   useEffect(() => {
     if (athlete) {
@@ -154,6 +158,18 @@ export function Profile() {
       await connectHevy(hevyApiKey)
       setShowHevyInput(false)
       setHevyApiKey('')
+    } catch (err) {
+      // Error is handled by the hook
+    }
+  }
+
+  const handleConnectStrava = async () => {
+    if (!stravaAccessToken.trim() || !stravaRefreshToken.trim()) return
+    try {
+      await connectStrava(stravaAccessToken, stravaRefreshToken)
+      setShowStravaInput(false)
+      setStravaAccessToken('')
+      setStravaRefreshToken('')
     } catch (err) {
       // Error is handled by the hook
     }
@@ -519,60 +535,99 @@ export function Profile() {
 
               <div className="space-y-4">
                 {/* Strava */}
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10">
-                      <Activity className="h-5 w-5 text-orange-500" />
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10">
+                        <Activity className="h-5 w-5 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Strava</p>
+                        <p className="text-sm text-muted-foreground">
+                          {integrationStatus.strava.connected
+                            ? 'Conectado y sincronizando'
+                            : 'Sincroniza tus actividades de running y ciclismo'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Strava</p>
-                      {integrationStatus.strava.connected && integrationStatus.strava.athlete ? (
-                        <p className="text-sm text-muted-foreground">
-                          Conectado como {integrationStatus.strava.athlete.firstname} {integrationStatus.strava.athlete.lastname}
-                        </p>
+                    <div className="flex items-center gap-2">
+                      {integrationStatus.strava.connected ? (
+                        <>
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={disconnectStrava}
+                            disabled={integrationLoading}
+                          >
+                            {integrationLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Desconectar'
+                            )}
+                          </Button>
+                        </>
                       ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Sincroniza tus actividades de running y ciclismo
-                        </p>
+                        <>
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setShowStravaInput(true)}
+                            disabled={integrationLoading}
+                          >
+                            <Key className="mr-2 h-4 w-4" />
+                            Conectar
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {integrationStatus.strava.connected ? (
-                      <>
-                        <CheckCircle className="h-5 w-5 text-green-500" />
+
+                  {/* Strava Tokens Input */}
+                  {showStravaInput && !integrationStatus.strava.connected && (
+                    <div className="mt-4 space-y-3 border-t pt-4">
+                      <p className="text-sm text-muted-foreground">
+                        Ingresa tus tokens de Strava. Puedes obtenerlos de tu configuracion MCP o de la API de Strava.
+                      </p>
+                      <div className="space-y-2">
+                        <Input
+                          type="password"
+                          placeholder="Access Token"
+                          value={stravaAccessToken}
+                          onChange={(e) => setStravaAccessToken(e.target.value)}
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Refresh Token"
+                          value={stravaRefreshToken}
+                          onChange={(e) => setStravaRefreshToken(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end">
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={disconnectStrava}
-                          disabled={integrationLoading}
+                          variant="ghost"
+                          onClick={() => {
+                            setShowStravaInput(false)
+                            setStravaAccessToken('')
+                            setStravaRefreshToken('')
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handleConnectStrava}
+                          disabled={integrationLoading || !stravaAccessToken.trim() || !stravaRefreshToken.trim()}
                         >
                           {integrationLoading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            'Desconectar'
+                            'Guardar'
                           )}
                         </Button>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-5 w-5 text-muted-foreground" />
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={connectStrava}
-                          disabled={integrationLoading}
-                        >
-                          {integrationLoading ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Link className="mr-2 h-4 w-4" />
-                          )}
-                          Conectar
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Hevy */}

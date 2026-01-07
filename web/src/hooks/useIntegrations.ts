@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '@/services/firebase'
 import { useStore } from '@/store'
 import {
   getIntegrationStatus,
+  saveStravaTokens,
+  saveHevyApiKey,
+  clearStravaTokens,
+  clearHevyApiKey,
   type IntegrationStatus,
-  type StravaAthlete,
 } from '@/services/firestore'
-
-const STRAVA_CLIENT_ID = import.meta.env.VITE_STRAVA_CLIENT_ID
 
 export function useIntegrations() {
   const { user } = useStore()
@@ -37,47 +36,33 @@ export function useIntegrations() {
     }
   }, [user?.uid])
 
-  // Strava OAuth
-  const connectStrava = useCallback(() => {
-    if (!STRAVA_CLIENT_ID) {
-      setError('Strava no está configurado')
-      return
-    }
-
-    const redirectUri = `${window.location.origin}/strava/callback`
-    const scope = 'read,activity:read_all,profile:read_all'
-
-    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`
-
-    window.location.href = authUrl
-  }, [])
-
-  const handleStravaCallback = useCallback(
-    async (code: string) => {
+  // Save Strava tokens directly (for personal use with existing tokens)
+  const connectStrava = useCallback(
+    async (accessToken: string, refreshToken: string) => {
       if (!user?.uid) return
 
       setLoading(true)
       setError(null)
 
       try {
-        const stravaOAuthCallback = httpsCallable(functions, 'stravaOAuthCallback')
-        const result = await stravaOAuthCallback({ code })
-        const data = result.data as { success: boolean; athlete: StravaAthlete }
+        // Calculate expires_at (assume 6 hours from now, will refresh if needed)
+        const expiresAt = Math.floor(Date.now() / 1000) + 21600
 
-        if (data.success) {
-          setStatus((prev) => ({
-            ...prev,
-            strava: {
-              connected: true,
-              athlete: data.athlete,
-            },
-          }))
-        }
+        await saveStravaTokens(user.uid, {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+        })
 
-        return data
+        setStatus((prev) => ({
+          ...prev,
+          strava: { connected: true },
+        }))
+
+        return { success: true }
       } catch (err) {
-        console.error('Error connecting Strava:', err)
-        setError('Error al conectar con Strava')
+        console.error('Error saving Strava tokens:', err)
+        setError('Error al guardar tokens de Strava')
         throw err
       } finally {
         setLoading(false)
@@ -93,9 +78,7 @@ export function useIntegrations() {
     setError(null)
 
     try {
-      const disconnect = httpsCallable(functions, 'disconnectStrava')
-      await disconnect({})
-
+      await clearStravaTokens(user.uid)
       setStatus((prev) => ({
         ...prev,
         strava: { connected: false },
@@ -109,7 +92,7 @@ export function useIntegrations() {
     }
   }, [user?.uid])
 
-  // Hevy API Key
+  // Save Hevy API Key directly
   const connectHevy = useCallback(
     async (apiKey: string) => {
       if (!user?.uid) return
@@ -118,25 +101,15 @@ export function useIntegrations() {
       setError(null)
 
       try {
-        const saveKey = httpsCallable(functions, 'saveHevyApiKey')
-        const result = await saveKey({ apiKey })
-        const data = result.data as { success: boolean }
-
-        if (data.success) {
-          setStatus((prev) => ({
-            ...prev,
-            hevy: { connected: true },
-          }))
-        }
-
-        return data
-      } catch (err: any) {
-        console.error('Error connecting Hevy:', err)
-        if (err.code === 'functions/invalid-argument') {
-          setError('API Key de Hevy inválida')
-        } else {
-          setError('Error al conectar con Hevy')
-        }
+        await saveHevyApiKey(user.uid, apiKey)
+        setStatus((prev) => ({
+          ...prev,
+          hevy: { connected: true },
+        }))
+        return { success: true }
+      } catch (err) {
+        console.error('Error saving Hevy API key:', err)
+        setError('Error al guardar API Key de Hevy')
         throw err
       } finally {
         setLoading(false)
@@ -152,9 +125,7 @@ export function useIntegrations() {
     setError(null)
 
     try {
-      const disconnect = httpsCallable(functions, 'disconnectHevy')
-      await disconnect({})
-
+      await clearHevyApiKey(user.uid)
       setStatus((prev) => ({
         ...prev,
         hevy: { connected: false },
@@ -174,7 +145,6 @@ export function useIntegrations() {
     error,
     loadStatus,
     connectStrava,
-    handleStravaCallback,
     disconnectStrava,
     connectHevy,
     disconnectHevy,
