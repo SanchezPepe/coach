@@ -3,9 +3,10 @@ import {
   Dumbbell,
   Calendar,
   ChevronRight,
-  Play,
   Clock,
   Target,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import {
   Card,
@@ -16,71 +17,17 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
-// Sample routine data (would come from strength module)
-const todaysRoutine = {
-  name: 'Fuerza - Tren Superior',
-  duration: '45 min',
-  focus: 'Pecho, espalda, hombros',
-  exercises: [
-    { name: 'Press de banca', sets: 4, reps: '8-10', rest: '90s' },
-    { name: 'Remo con barra', sets: 4, reps: '8-10', rest: '90s' },
-    { name: 'Press militar', sets: 3, reps: '10-12', rest: '60s' },
-    { name: 'Dominadas', sets: 3, reps: 'Max', rest: '90s' },
-    { name: 'Face pulls', sets: 3, reps: '15', rest: '45s' },
-  ],
-}
-
-const routines = [
-  {
-    id: '1',
-    name: 'Fuerza Maxima - Piernas',
-    duration: '60 min',
-    exercises: 6,
-    focus: 'strength',
-  },
-  {
-    id: '2',
-    name: 'Core y Estabilidad',
-    duration: '30 min',
-    exercises: 8,
-    focus: 'functional',
-  },
-  {
-    id: '3',
-    name: 'Tren Superior - Hipertrofia',
-    duration: '50 min',
-    exercises: 7,
-    focus: 'hypertrophy',
-  },
-]
-
-const recentWorkouts = [
-  {
-    id: '1',
-    name: 'Piernas - Fuerza',
-    date: '2026-01-05',
-    duration: '58 min',
-    volume: 12500,
-  },
-  {
-    id: '2',
-    name: 'Core y Estabilidad',
-    date: '2026-01-03',
-    duration: '32 min',
-    volume: 0,
-  },
-  {
-    id: '3',
-    name: 'Tren Superior',
-    date: '2026-01-01',
-    duration: '52 min',
-    volume: 8200,
-  },
-]
+import { useHevy } from '@/hooks'
+import { Link } from 'react-router-dom'
+import { formatDateShort } from '@/lib/utils'
 
 export function Strength() {
+  const { workouts, weeklyStats, loading, error, refresh, calculateWorkoutStats } = useHevy()
   const [activeTab, setActiveTab] = useState('today')
+
+  // Get the most recent workout for "today's routine" view
+  const latestWorkout = workouts[0]
+  const latestWorkoutStats = latestWorkout ? calculateWorkoutStats(latestWorkout) : null
 
   return (
     <div className="space-y-6">
@@ -92,9 +39,13 @@ export function Strength() {
             Rutinas, ejercicios y progreso
           </p>
         </div>
-        <Button variant="strength">
-          <Dumbbell className="mr-2 h-4 w-4" />
-          Sincronizar Hevy
+        <Button variant="strength" onClick={() => refresh()} disabled={loading}>
+          {loading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Sincronizar
         </Button>
       </div>
 
@@ -107,64 +58,111 @@ export function Strength() {
         </TabsList>
 
         <TabsContent value="today" className="space-y-4">
-          {/* Today's Routine */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Rutina de Hoy
-                  </CardTitle>
-                  <CardDescription>
-                    {todaysRoutine.name} - {todaysRoutine.focus}
-                  </CardDescription>
+          {/* Latest Workout */}
+          {loading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ) : error ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Dumbbell className="h-16 w-16 text-muted-foreground/50" />
+                <h3 className="mt-4 text-lg font-medium">
+                  Error al cargar entrenamientos
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
+                  {error}
+                </p>
+                <Link to="/profile">
+                  <Button variant="strength" className="mt-4">
+                    Configurar Hevy
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : !latestWorkout ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Dumbbell className="h-16 w-16 text-muted-foreground/50" />
+                <h3 className="mt-4 text-lg font-medium">
+                  Sin entrenamientos
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
+                  Conecta tu cuenta de Hevy para ver tus entrenamientos
+                </p>
+                <Link to="/profile">
+                  <Button variant="strength" className="mt-4">
+                    Conectar Hevy
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      Ultimo Entrenamiento
+                    </CardTitle>
+                    <CardDescription>
+                      {latestWorkout.title} - {formatDateShort(new Date(latestWorkout.start_time))}
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline">
+                    <ChevronRight className="mr-2 h-4 w-4" />
+                    Ver detalles
+                  </Button>
                 </div>
-                <Button variant="strength">
-                  <Play className="mr-2 h-4 w-4" />
-                  Iniciar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-6 flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{todaysRoutine.duration}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6 flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{latestWorkoutStats?.durationMinutes} min</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      {latestWorkout.exercises.length} ejercicios
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      {latestWorkoutStats?.totalSets} sets
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {todaysRoutine.exercises.length} ejercicios
-                  </span>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                {todaysRoutine.exercises.map((exercise, index) => (
-                  <div
-                    key={exercise.name}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-strength/10 text-sm font-medium text-strength">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium">{exercise.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {exercise.sets} x {exercise.reps} • Descanso: {exercise.rest}
-                        </p>
+                <div className="space-y-3">
+                  {latestWorkout.exercises.map((exercise, index) => (
+                    <div
+                      key={`${exercise.exercise_template_id}-${index}`}
+                      className="flex items-center justify-between rounded-lg border p-4"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-strength/10 text-sm font-medium text-strength">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium">{exercise.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {exercise.sets.length} sets
+                            {exercise.sets[0]?.weight_kg && ` • ${exercise.sets[0].weight_kg}kg`}
+                            {exercise.sets[0]?.reps && ` x ${exercise.sets[0].reps}`}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Stats */}
           <div className="grid gap-4 md:grid-cols-3">
@@ -175,7 +173,13 @@ export function Strength() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    weeklyStats.workoutCount
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   sesiones completadas
                 </p>
@@ -188,7 +192,13 @@ export function Strength() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">20,700 kg</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    `${weeklyStats.totalVolume.toLocaleString()} kg`
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   esta semana
                 </p>
@@ -197,13 +207,19 @@ export function Strength() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Racha
+                  Sets Totales
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3 semanas</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    weeklyStats.totalSets
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  cumpliendo el plan
+                  esta semana
                 </p>
               </CardContent>
             </Card>
@@ -211,40 +227,17 @@ export function Strength() {
         </TabsContent>
 
         <TabsContent value="routines" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {routines.map((routine) => (
-              <Card key={routine.id} className="cursor-pointer hover:border-strength/50">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-strength/10">
-                      <Dumbbell className="h-5 w-5 text-strength" />
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-medium ${
-                        routine.focus === 'strength'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          : routine.focus === 'hypertrophy'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                      }`}
-                    >
-                      {routine.focus}
-                    </span>
-                  </div>
-                  <CardTitle className="mt-4">{routine.name}</CardTitle>
-                  <CardDescription>
-                    {routine.duration} • {routine.exercises} ejercicios
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full">
-                    Ver rutina
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Dumbbell className="h-16 w-16 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-medium">
+                Rutinas desde Hevy
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
+                Las rutinas se sincronizan automaticamente desde tu cuenta de Hevy
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
@@ -256,47 +249,69 @@ export function Strength() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentWorkouts.map((workout) => (
-                  <div
-                    key={workout.id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-strength/10">
-                        <Dumbbell className="h-6 w-6 text-strength" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{workout.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(workout.date).toLocaleDateString('es-ES', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Clock className="h-3 w-3" />
-                          {workout.duration}
-                        </div>
-                        {workout.volume > 0 && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Target className="h-3 w-3" />
-                            {workout.volume.toLocaleString()} kg
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Dumbbell className="h-12 w-12 text-muted-foreground/50" />
+                  <p className="mt-4 text-sm text-muted-foreground">{error}</p>
+                  <Link to="/profile">
+                    <Button variant="outline" className="mt-4">
+                      Configurar Hevy
+                    </Button>
+                  </Link>
+                </div>
+              ) : workouts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Dumbbell className="h-12 w-12 text-muted-foreground/50" />
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    No hay entrenamientos recientes
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {workouts.map((workout) => {
+                    const stats = calculateWorkoutStats(workout)
+                    return (
+                      <div
+                        key={workout.id}
+                        className="flex items-center justify-between rounded-lg border p-4"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-strength/10">
+                            <Dumbbell className="h-6 w-6 text-strength" />
                           </div>
-                        )}
+                          <div>
+                            <p className="font-medium">{workout.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDateShort(new Date(workout.start_time))} • {workout.exercises.length} ejercicios
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Clock className="h-3 w-3" />
+                              {stats.durationMinutes} min
+                            </div>
+                            {stats.totalVolume > 0 && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Target className="h-3 w-3" />
+                                {stats.totalVolume.toLocaleString()} kg
+                              </div>
+                            )}
+                          </div>
+                          <Button variant="ghost" size="icon">
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -6,6 +6,8 @@ import {
   Timer,
   Mountain,
   ChevronRight,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import {
   Card,
@@ -17,11 +19,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { useStore } from '@/store'
+import { useStrava } from '@/hooks'
 import { formatDistance, formatPace, formatDuration, formatDateShort } from '@/lib/utils'
+import { Link } from 'react-router-dom'
 
 export function Running() {
-  const { stravaActivities } = useStore()
+  const { activities, weeklyStats, loading, error, refresh } = useStrava()
   const [activeTab, setActiveTab] = useState('activities')
 
   // Pace zones (would come from running module)
@@ -54,9 +57,13 @@ export function Running() {
             Actividades, planes y analisis
           </p>
         </div>
-        <Button variant="running">
-          <Activity className="mr-2 h-4 w-4" />
-          Sincronizar Strava
+        <Button variant="running" onClick={() => refresh()} disabled={loading}>
+          {loading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Sincronizar
         </Button>
       </div>
 
@@ -122,7 +129,30 @@ export function Running() {
         </TabsList>
 
         <TabsContent value="activities" className="space-y-4">
-          {stravaActivities.length === 0 ? (
+          {loading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ) : error ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Activity className="h-16 w-16 text-muted-foreground/50" />
+                <h3 className="mt-4 text-lg font-medium">
+                  Error al cargar actividades
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
+                  {error}
+                </p>
+                <Link to="/profile">
+                  <Button variant="running" className="mt-4">
+                    Configurar Strava
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : activities.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Activity className="h-16 w-16 text-muted-foreground/50" />
@@ -132,13 +162,15 @@ export function Running() {
                 <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
                   Conecta tu cuenta de Strava para ver tus actividades y analisis de rendimiento
                 </p>
-                <Button variant="running" className="mt-4">
-                  Conectar Strava
-                </Button>
+                <Link to="/profile">
+                  <Button variant="running" className="mt-4">
+                    Conectar Strava
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           ) : (
-            stravaActivities.map((activity) => (
+            activities.map((activity) => (
               <Card key={activity.id}>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
@@ -260,43 +292,82 @@ export function Running() {
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Ultimos 7 dias
+                  Distancia (7 dias)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">32.5 km</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    `${weeklyStats.totalDistance.toFixed(1)} km`
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  4 actividades
+                  {weeklyStats.runCount} carreras
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Ultimos 30 dias
+                  Tiempo (7 dias)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">142 km</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    formatDuration(weeklyStats.totalTime * 60)
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  18 actividades
+                  Tiempo en movimiento
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Este ano
+                  Ritmo Promedio
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">856 km</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : weeklyStats.avgPace > 0 ? (
+                    formatPace(weeklyStats.avgPace * 60)
+                  ) : (
+                    '--:--'
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  98 actividades
+                  min/km promedio
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Desnivel (7 dias)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    `${Math.round(weeklyStats.totalElevation)}m`
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ganancia acumulada
                 </p>
               </CardContent>
             </Card>
