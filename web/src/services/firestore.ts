@@ -317,6 +317,59 @@ export async function getHevyApiKey(userId: string): Promise<string | null> {
   return null
 }
 
+export interface StravaAthlete {
+  id: number
+  firstname: string
+  lastname: string
+  profile?: string
+}
+
+export interface IntegrationStatus {
+  strava: {
+    connected: boolean
+    athlete?: StravaAthlete
+  }
+  hevy: {
+    connected: boolean
+  }
+}
+
+export async function getIntegrationStatus(userId: string): Promise<IntegrationStatus> {
+  const userDoc = await getDoc(doc(db, 'users', userId))
+
+  if (!userDoc.exists()) {
+    return {
+      strava: { connected: false },
+      hevy: { connected: false },
+    }
+  }
+
+  const data = userDoc.data()
+
+  return {
+    strava: {
+      connected: !!data.stravaTokens,
+      athlete: data.stravaAthlete,
+    },
+    hevy: {
+      connected: !!data.hevyApiKey,
+    },
+  }
+}
+
+export async function clearStravaTokens(userId: string): Promise<void> {
+  await updateDoc(doc(db, 'users', userId), {
+    stravaTokens: null,
+    stravaAthlete: null,
+  })
+}
+
+export async function clearHevyApiKey(userId: string): Promise<void> {
+  await updateDoc(doc(db, 'users', userId), {
+    hevyApiKey: null,
+  })
+}
+
 // ============ INITIALIZATION ============
 
 export async function initializeUserDocument(

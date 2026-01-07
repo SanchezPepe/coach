@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Layout } from '@/components/layout'
-import { Dashboard, Running, Strength, Nutrition, Profile, Auth, Onboarding } from '@/pages'
+import { Dashboard, Running, Strength, Nutrition, Profile, Auth, Onboarding, StravaCallback } from '@/pages'
 import { useStore } from '@/store'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -75,6 +75,16 @@ function App() {
             <OnboardingRoute>
               <Onboarding />
             </OnboardingRoute>
+          }
+        />
+
+        {/* Strava OAuth callback */}
+        <Route
+          path="/strava/callback"
+          element={
+            <ProtectedRoute>
+              <StravaCallback />
+            </ProtectedRoute>
           }
         />
 

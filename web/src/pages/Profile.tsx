@@ -12,7 +12,10 @@ import {
   X,
   Link,
   XCircle,
+  CheckCircle,
   Apple,
+  Loader2,
+  Key,
 } from 'lucide-react'
 import {
   Card,
@@ -25,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAthlete } from '@/hooks/useAthlete'
+import { useIntegrations } from '@/hooks/useIntegrations'
 
 const goalOptions = [
   {
@@ -52,6 +56,15 @@ const goalOptions = [
 
 export function Profile() {
   const { athlete, updateWeight, updateGoals, saveProfile, loading } = useAthlete()
+  const {
+    status: integrationStatus,
+    loading: integrationLoading,
+    error: integrationError,
+    connectStrava,
+    disconnectStrava,
+    connectHevy,
+    disconnectHevy,
+  } = useIntegrations()
   const [activeTab, setActiveTab] = useState('profile')
 
   // Edit profile state
@@ -71,6 +84,10 @@ export function Profile() {
   // Edit goals state
   const [isEditingGoal, setIsEditingGoal] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState('')
+
+  // Hevy API key state
+  const [showHevyInput, setShowHevyInput] = useState(false)
+  const [hevyApiKey, setHevyApiKey] = useState('')
 
   // Initialize edit values when athlete changes
   useEffect(() => {
@@ -129,6 +146,17 @@ export function Profile() {
       },
     })
     setIsEditingGoal(false)
+  }
+
+  const handleConnectHevy = async () => {
+    if (!hevyApiKey.trim()) return
+    try {
+      await connectHevy(hevyApiKey)
+      setShowHevyInput(false)
+      setHevyApiKey('')
+    } catch (err) {
+      // Error is handled by the hook
+    }
   }
 
   const currentGoal = goalOptions.find(g => g.type === athlete?.goals?.primary?.type) || goalOptions[0]
@@ -483,6 +511,12 @@ export function Profile() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {integrationError && (
+                <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                  {integrationError}
+                </div>
+              )}
+
               <div className="space-y-4">
                 {/* Strava */}
                 <div className="flex items-center justify-between rounded-lg border p-4">
@@ -492,40 +526,142 @@ export function Profile() {
                     </div>
                     <div>
                       <p className="font-medium">Strava</p>
-                      <p className="text-sm text-muted-foreground">
-                        Sincroniza tus actividades de running y ciclismo
-                      </p>
+                      {integrationStatus.strava.connected && integrationStatus.strava.athlete ? (
+                        <p className="text-sm text-muted-foreground">
+                          Conectado como {integrationStatus.strava.athlete.firstname} {integrationStatus.strava.athlete.lastname}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Sincroniza tus actividades de running y ciclismo
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                    <Button variant="default" size="sm">
-                      <Link className="mr-2 h-4 w-4" />
-                      Conectar
-                    </Button>
+                    {integrationStatus.strava.connected ? (
+                      <>
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={disconnectStrava}
+                          disabled={integrationLoading}
+                        >
+                          {integrationLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Desconectar'
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-5 w-5 text-muted-foreground" />
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={connectStrava}
+                          disabled={integrationLoading}
+                        >
+                          {integrationLoading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Link className="mr-2 h-4 w-4" />
+                          )}
+                          Conectar
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* Hevy */}
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
-                      <Dumbbell className="h-5 w-5 text-purple-500" />
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
+                        <Dumbbell className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Hevy</p>
+                        <p className="text-sm text-muted-foreground">
+                          {integrationStatus.hevy.connected
+                            ? 'Conectado y sincronizando'
+                            : 'Sincroniza tus entrenamientos de fuerza'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Hevy</p>
+                    <div className="flex items-center gap-2">
+                      {integrationStatus.hevy.connected ? (
+                        <>
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={disconnectHevy}
+                            disabled={integrationLoading}
+                          >
+                            {integrationLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Desconectar'
+                            )}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-5 w-5 text-muted-foreground" />
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setShowHevyInput(true)}
+                            disabled={integrationLoading}
+                          >
+                            <Key className="mr-2 h-4 w-4" />
+                            Conectar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hevy API Key Input */}
+                  {showHevyInput && !integrationStatus.hevy.connected && (
+                    <div className="mt-4 space-y-3 border-t pt-4">
                       <p className="text-sm text-muted-foreground">
-                        Sincroniza tus entrenamientos de fuerza
+                        Ingresa tu API Key de Hevy. Puedes obtenerla en la configuracion de tu cuenta de Hevy.
                       </p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          placeholder="API Key de Hevy"
+                          value={hevyApiKey}
+                          onChange={(e) => setHevyApiKey(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setShowHevyInput(false)
+                            setHevyApiKey('')
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={handleConnectHevy}
+                          disabled={integrationLoading || !hevyApiKey.trim()}
+                        >
+                          {integrationLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Guardar'
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                    <Button variant="default" size="sm">
-                      <Link className="mr-2 h-4 w-4" />
-                      Conectar
-                    </Button>
-                  </div>
+                  )}
                 </div>
               </div>
             </CardContent>

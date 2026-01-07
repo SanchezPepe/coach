@@ -183,6 +183,162 @@ export const searchFoods = functions.https.onCall(async (data, context) => {
   }
 })
 
+// Strava OAuth - Exchange code for tokens
+export const stravaOAuthCallback = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+
+  const { code } = data
+  const userId = context.auth.uid
+
+  if (!code) {
+    throw new functions.https.HttpsError('invalid-argument', 'Authorization code is required')
+  }
+
+  const clientId = functions.config().strava?.client_id
+  const clientSecret = functions.config().strava?.client_secret
+
+  if (!clientId || !clientSecret) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'Strava credentials not configured'
+    )
+  }
+
+  try {
+    const response = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: 'authorization_code',
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('Strava OAuth error:', error)
+      throw new functions.https.HttpsError('internal', 'Failed to exchange code for tokens')
+    }
+
+    const tokens = await response.json()
+
+    // Save tokens to Firestore
+    await db.collection('users').doc(userId).set(
+      {
+        stravaTokens: {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expires_at: tokens.expires_at,
+        },
+        stravaAthlete: {
+          id: tokens.athlete?.id,
+          firstname: tokens.athlete?.firstname,
+          lastname: tokens.athlete?.lastname,
+          profile: tokens.athlete?.profile,
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+
+    return { success: true, athlete: tokens.athlete }
+  } catch (error) {
+    console.error('Error in Strava OAuth:', error)
+    throw new functions.https.HttpsError('internal', 'Failed to connect Strava')
+  }
+})
+
+// Disconnect Strava
+export const disconnectStrava = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+
+  const userId = context.auth.uid
+
+  try {
+    await db.collection('users').doc(userId).update({
+      stravaTokens: admin.firestore.FieldValue.delete(),
+      stravaAthlete: admin.firestore.FieldValue.delete(),
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error disconnecting Strava:', error)
+    throw new functions.https.HttpsError('internal', 'Failed to disconnect Strava')
+  }
+})
+
+// Disconnect Hevy
+export const disconnectHevy = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+
+  const userId = context.auth.uid
+
+  try {
+    await db.collection('users').doc(userId).update({
+      hevyApiKey: admin.firestore.FieldValue.delete(),
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error disconnecting Hevy:', error)
+    throw new functions.https.HttpsError('internal', 'Failed to disconnect Hevy')
+  }
+})
+
+// Save Hevy API Key
+export const saveHevyApiKey = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be logged in')
+  }
+
+  const { apiKey } = data
+  const userId = context.auth.uid
+
+  if (!apiKey) {
+    throw new functions.https.HttpsError('invalid-argument', 'API key is required')
+  }
+
+  try {
+    // Verify the API key works by making a test request
+    const response = await fetch('https://api.hevyapp.com/v1/workouts?page=1&pageSize=1', {
+      headers: {
+        'api-key': apiKey,
+      },
+    })
+
+    if (!response.ok) {
+      throw new functions.https.HttpsError('invalid-argument', 'Invalid Hevy API key')
+    }
+
+    // Save the API key
+    await db.collection('users').doc(userId).set(
+      {
+        hevyApiKey: apiKey,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error saving Hevy API key:', error)
+    if (error instanceof functions.https.HttpsError) {
+      throw error
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to save Hevy API key')
+  }
+})
+
 // Save athlete profile
 export const saveAthleteProfile = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
