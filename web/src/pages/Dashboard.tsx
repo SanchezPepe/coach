@@ -3,18 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { useStore } from '@/store'
+import { useNutrition } from '@/hooks/useNutrition'
 import { formatDistance, formatPace, formatDateShort } from '@/lib/utils'
 
 export function Dashboard() {
   const { athlete, todaysMacros, stravaActivities } = useStore()
+  const { getMacroTargets } = useNutrition()
 
-  // Calculate macro targets (simplified - would come from nutrition module)
-  const macroTargets = {
-    calories: 2500,
-    protein: 150,
-    carbs: 300,
-    fat: 80,
-  }
+  // Calculate macro targets based on athlete profile
+  const macroTargets = getMacroTargets(athlete)
 
   const recentActivities = stravaActivities.slice(0, 3)
 

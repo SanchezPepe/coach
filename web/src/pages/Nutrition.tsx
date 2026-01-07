@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStore } from '@/store'
+import { useNutrition } from '@/hooks/useNutrition'
 
 // Sample meal suggestions (would come from nutrition module)
 const mealSuggestions = [
@@ -50,17 +51,13 @@ const mealSuggestions = [
 ]
 
 export function Nutrition() {
-  const { todaysMacros, todaysFoodLog, removeFoodEntry } = useStore()
+  const { athlete } = useStore()
+  const { todaysMacros, todaysFoodLog, deleteFood, getMacroTargets, loading } = useNutrition()
   const [activeTab, setActiveTab] = useState('today')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Macro targets (would come from nutrition module based on athlete profile)
-  const macroTargets = {
-    calories: 2500,
-    protein: 150,
-    carbs: 300,
-    fat: 80,
-  }
+  // Macro targets based on athlete profile
+  const macroTargets = getMacroTargets(athlete)
 
   const remaining = {
     calories: Math.max(0, macroTargets.calories - todaysMacros.calories),
@@ -210,7 +207,8 @@ export function Nutrition() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeFoodEntry(entry.id)}
+                          onClick={() => deleteFood(entry.id)}
+                          disabled={loading}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

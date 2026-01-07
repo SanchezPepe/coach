@@ -7,22 +7,36 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { auth, db } from '@/services/firebase'
+import { auth } from '@/services/firebase'
 import { useStore } from '@/store'
+import {
+  initializeUserDocument,
+  getAthleteProfile,
+  getUserSettings,
+} from '@/services/firestore'
 
 export function useAuth() {
-  const { user, isAuthenticated, setUser, setAthlete, logout } = useStore()
+  const { user, isAuthenticated, setUser, setAthlete, setTheme, logout } = useStore()
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser({ uid: firebaseUser.uid, email: firebaseUser.email || '' })
 
-        // Load athlete profile from Firestore
-        const athleteDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-        if (athleteDoc.exists()) {
-          setAthlete(athleteDoc.data().profile)
+        try {
+          // Load athlete profile from Firestore
+          const profile = await getAthleteProfile(firebaseUser.uid)
+          if (profile) {
+            setAthlete(profile)
+          }
+
+          // Load user settings
+          const settings = await getUserSettings(firebaseUser.uid)
+          if (settings?.theme) {
+            setTheme(settings.theme === 'system' ? 'dark' : settings.theme)
+          }
+        } catch (err) {
+          console.error('Error loading user data:', err)
         }
       } else {
         setUser(null)
@@ -31,7 +45,7 @@ export function useAuth() {
     })
 
     return () => unsubscribe()
-  }, [setUser, setAthlete])
+  }, [setUser, setAthlete, setTheme])
 
   const signIn = async (email: string, password: string) => {
     const result = await signInWithEmailAndPassword(auth, email, password)
@@ -41,11 +55,8 @@ export function useAuth() {
   const signUp = async (email: string, password: string) => {
     const result = await createUserWithEmailAndPassword(auth, email, password)
 
-    // Create initial user document
-    await setDoc(doc(db, 'users', result.user.uid), {
-      email: result.user.email,
-      createdAt: new Date().toISOString(),
-    })
+    // Initialize user document with default settings
+    await initializeUserDocument(result.user.uid, result.user.email || '')
 
     return result.user
   }
@@ -54,13 +65,13 @@ export function useAuth() {
     const provider = new GoogleAuthProvider()
     const result = await signInWithPopup(auth, provider)
 
-    // Check if user document exists, create if not
-    const userDoc = await getDoc(doc(db, 'users', result.user.uid))
-    if (!userDoc.exists()) {
-      await setDoc(doc(db, 'users', result.user.uid), {
-        email: result.user.email,
-        createdAt: new Date().toISOString(),
-      })
+    // Initialize user document if it doesn't exist
+    await initializeUserDocument(result.user.uid, result.user.email || '')
+
+    // Load profile
+    const profile = await getAthleteProfile(result.user.uid)
+    if (profile) {
+      setAthlete(profile)
     }
 
     return result.user
@@ -71,6 +82,10 @@ export function useAuth() {
     logout()
   }
 
+  const needsOnboarding = () => {
+    return isAuthenticated && !useStore.getState().athlete
+  }
+
   return {
     user,
     isAuthenticated,
@@ -78,5 +93,6 @@ export function useAuth() {
     signUp,
     signInWithGoogle,
     signOut: signOutUser,
+    needsOnboarding,
   }
 }

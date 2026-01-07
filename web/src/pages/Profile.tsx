@@ -23,18 +23,18 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useStore } from '@/store'
+import { useAthlete } from '@/hooks/useAthlete'
 
 export function Profile() {
-  const { athlete, updateWeight } = useStore()
+  const { athlete, updateWeight, loading } = useAthlete()
   const [activeTab, setActiveTab] = useState('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [editedWeight, setEditedWeight] = useState(athlete?.weightKg?.toString() || '')
 
-  const handleSaveWeight = () => {
+  const handleSaveWeight = async () => {
     const weight = parseFloat(editedWeight)
     if (!isNaN(weight) && weight > 0) {
-      updateWeight(weight)
+      await updateWeight(weight)
       setIsEditing(false)
     }
   }
@@ -110,7 +110,7 @@ export function Profile() {
                         onChange={(e) => setEditedWeight(e.target.value)}
                         className="w-24"
                       />
-                      <Button size="sm" onClick={handleSaveWeight}>
+                      <Button size="sm" onClick={handleSaveWeight} disabled={loading}>
                         <Save className="h-4 w-4" />
                       </Button>
                     </div>
