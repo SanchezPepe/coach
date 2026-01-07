@@ -91,7 +91,6 @@ function App() {
           <Route path="/strength" element={<Strength />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<Profile />} />
         </Route>
 
         {/* Catch all - redirect to home */}

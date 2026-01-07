@@ -5,7 +5,6 @@ import {
   Dumbbell,
   Apple,
   User,
-  Settings,
   LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,7 +21,6 @@ const navigation = [
 
 const secondaryNavigation = [
   { name: 'Perfil', href: '/profile', icon: User },
-  { name: 'Configuracion', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {

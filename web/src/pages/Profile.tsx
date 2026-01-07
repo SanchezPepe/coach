@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   User,
   Target,
@@ -9,9 +9,10 @@ import {
   Dumbbell,
   Edit2,
   Save,
+  X,
   Link,
-  CheckCircle,
   XCircle,
+  Apple,
 } from 'lucide-react'
 import {
   Card,
@@ -25,25 +26,112 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAthlete } from '@/hooks/useAthlete'
 
+const goalOptions = [
+  {
+    type: 'endurance',
+    title: 'Rendimiento en Carrera',
+    description: 'Mejorar tiempos en 5K, 10K, 21K o maraton',
+    icon: Activity,
+    color: 'running',
+  },
+  {
+    type: 'strength',
+    title: 'Fuerza e Hipertrofia',
+    description: 'Ganar musculo y aumentar fuerza',
+    icon: Dumbbell,
+    color: 'strength',
+  },
+  {
+    type: 'body_composition',
+    title: 'Composicion Corporal',
+    description: 'Perder grasa o recomposicion corporal',
+    icon: Apple,
+    color: 'nutrition',
+  },
+]
+
 export function Profile() {
-  const { athlete, updateWeight, loading } = useAthlete()
+  const { athlete, updateWeight, updateGoals, saveProfile, loading } = useAthlete()
   const [activeTab, setActiveTab] = useState('profile')
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedWeight, setEditedWeight] = useState(athlete?.weightKg?.toString() || '')
+
+  // Edit profile state
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editedName, setEditedName] = useState('')
+  const [editedAge, setEditedAge] = useState('')
+  const [editedSex, setEditedSex] = useState<'male' | 'female'>('male')
+
+  // Edit physical stats state
+  const [isEditingWeight, setIsEditingWeight] = useState(false)
+  const [editedWeight, setEditedWeight] = useState('')
+  const [isEditingHeight, setIsEditingHeight] = useState(false)
+  const [editedHeight, setEditedHeight] = useState('')
+  const [isEditingHR, setIsEditingHR] = useState(false)
+  const [editedMaxHR, setEditedMaxHR] = useState('')
+
+  // Edit goals state
+  const [isEditingGoal, setIsEditingGoal] = useState(false)
+  const [selectedGoal, setSelectedGoal] = useState('')
+
+  // Initialize edit values when athlete changes
+  useEffect(() => {
+    if (athlete) {
+      setEditedName(athlete.name || '')
+      setEditedAge(athlete.age?.toString() || '')
+      setEditedSex(athlete.sex || 'male')
+      setEditedWeight(athlete.weightKg?.toString() || '')
+      setEditedHeight(athlete.heightCm?.toString() || '')
+      setEditedMaxHR(athlete.maxHeartRate?.toString() || '')
+      setSelectedGoal(athlete.goals?.primary?.type || 'endurance')
+    }
+  }, [athlete])
+
+  const handleSaveProfile = async () => {
+    if (!athlete) return
+    await saveProfile({
+      ...athlete,
+      name: editedName,
+      age: parseInt(editedAge),
+      sex: editedSex,
+    })
+    setIsEditingProfile(false)
+  }
 
   const handleSaveWeight = async () => {
     const weight = parseFloat(editedWeight)
     if (!isNaN(weight) && weight > 0) {
       await updateWeight(weight)
-      setIsEditing(false)
+      setIsEditingWeight(false)
     }
   }
 
-  // Integration status (would come from actual connection state)
-  const integrations = [
-    { name: 'Strava', connected: true, icon: Activity },
-    { name: 'Hevy', connected: false, icon: Dumbbell },
-  ]
+  const handleSaveHeight = async () => {
+    if (!athlete) return
+    const height = parseFloat(editedHeight)
+    if (!isNaN(height) && height > 0) {
+      await saveProfile({ ...athlete, heightCm: height })
+      setIsEditingHeight(false)
+    }
+  }
+
+  const handleSaveMaxHR = async () => {
+    if (!athlete) return
+    const maxHR = parseInt(editedMaxHR)
+    if (!isNaN(maxHR) && maxHR > 0) {
+      await saveProfile({ ...athlete, maxHeartRate: maxHR })
+      setIsEditingHR(false)
+    }
+  }
+
+  const handleSaveGoal = async () => {
+    await updateGoals({
+      primary: {
+        type: selectedGoal as 'endurance' | 'strength' | 'body_composition',
+      },
+    })
+    setIsEditingGoal(false)
+  }
+
+  const currentGoal = goalOptions.find(g => g.type === athlete?.goals?.primary?.type) || goalOptions[0]
 
   return (
     <div className="space-y-6">
@@ -71,18 +159,63 @@ export function Profile() {
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <User className="h-8 w-8 text-primary" />
                   </div>
-                  <div>
-                    <CardTitle>{athlete?.name || 'Usuario'}</CardTitle>
-                    <CardDescription>
-                      {athlete?.age ? `${athlete.age} anos` : ''} •{' '}
-                      {athlete?.sex === 'male' ? 'Masculino' : 'Femenino'}
-                    </CardDescription>
-                  </div>
+                  {isEditingProfile ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={editedName}
+                        onChange={(e) => setEditedName(e.target.value)}
+                        placeholder="Nombre"
+                        className="w-48"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          value={editedAge}
+                          onChange={(e) => setEditedAge(e.target.value)}
+                          placeholder="Edad"
+                          className="w-20"
+                        />
+                        <Button
+                          variant={editedSex === 'male' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setEditedSex('male')}
+                        >
+                          M
+                        </Button>
+                        <Button
+                          variant={editedSex === 'female' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setEditedSex('female')}
+                        >
+                          F
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <CardTitle>{athlete?.name || 'Usuario'}</CardTitle>
+                      <CardDescription>
+                        {athlete?.age ? `${athlete.age} anos` : ''} •{' '}
+                        {athlete?.sex === 'male' ? 'Masculino' : 'Femenino'}
+                      </CardDescription>
+                    </div>
+                  )}
                 </div>
-                <Button variant="outline" size="sm">
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Editar
-                </Button>
+                {isEditingProfile ? (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" onClick={handleSaveProfile} disabled={loading}>
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingProfile(true)}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                )}
               </div>
             </CardHeader>
           </Card>
@@ -97,19 +230,24 @@ export function Profile() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                {/* Weight */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Scale className="h-4 w-4" />
                     Peso
                   </div>
-                  {isEditing ? (
+                  {isEditingWeight ? (
                     <div className="flex gap-2">
                       <Input
                         type="number"
+                        step="0.1"
                         value={editedWeight}
                         onChange={(e) => setEditedWeight(e.target.value)}
                         className="w-24"
                       />
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingWeight(false)}>
+                        <X className="h-4 w-4" />
+                      </Button>
                       <Button size="sm" onClick={handleSaveWeight} disabled={loading}>
                         <Save className="h-4 w-4" />
                       </Button>
@@ -122,10 +260,7 @@ export function Profile() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
-                          setIsEditing(true)
-                          setEditedWeight(athlete?.weightKg?.toString() || '')
-                        }}
+                        onClick={() => setIsEditingWeight(true)}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -133,16 +268,44 @@ export function Profile() {
                   )}
                 </div>
 
+                {/* Height */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Ruler className="h-4 w-4" />
                     Altura
                   </div>
-                  <p className="text-2xl font-bold">
-                    {athlete?.heightCm || '--'} cm
-                  </p>
+                  {isEditingHeight ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={editedHeight}
+                        onChange={(e) => setEditedHeight(e.target.value)}
+                        className="w-24"
+                      />
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingHeight(false)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" onClick={handleSaveHeight} disabled={loading}>
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-bold">
+                        {athlete?.heightCm || '--'} cm
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsEditingHeight(true)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
+                {/* Body Fat */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Target className="h-4 w-4" />
@@ -153,14 +316,41 @@ export function Profile() {
                   </p>
                 </div>
 
+                {/* Max HR */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Heart className="h-4 w-4" />
                     FC Maxima
                   </div>
-                  <p className="text-2xl font-bold">
-                    {athlete?.maxHeartRate || '--'} bpm
-                  </p>
+                  {isEditingHR ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={editedMaxHR}
+                        onChange={(e) => setEditedMaxHR(e.target.value)}
+                        className="w-24"
+                      />
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingHR(false)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" onClick={handleSaveMaxHR} disabled={loading}>
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-bold">
+                        {athlete?.maxHeartRate || '--'} bpm
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsEditingHR(true)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -224,55 +414,62 @@ export function Profile() {
                     Tu meta principal de entrenamiento
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm">
-                  Cambiar objetivo
-                </Button>
+                {!isEditingGoal && (
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingGoal(true)}>
+                    Cambiar objetivo
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 rounded-lg border p-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-running/10">
-                  <Activity className="h-6 w-6 text-running" />
+              {isEditingGoal ? (
+                <div className="space-y-4">
+                  {goalOptions.map((goal) => (
+                    <button
+                      key={goal.type}
+                      type="button"
+                      className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                        selectedGoal === goal.type
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                      onClick={() => setSelectedGoal(goal.type)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-${goal.color}/10`}>
+                          <goal.icon className={`h-5 w-5 text-${goal.color}`} />
+                        </div>
+                        <div>
+                          <p className="font-medium">{goal.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {goal.description}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <div className="flex gap-2 justify-end mt-4">
+                    <Button variant="outline" onClick={() => setIsEditingGoal(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveGoal} disabled={loading}>
+                      Guardar
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold">Media Maraton (21K)</p>
-                  <p className="text-sm text-muted-foreground">
-                    Fecha objetivo: 15 de Abril, 2026
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Tiempo objetivo: 1:45:00
-                  </p>
+              ) : (
+                <div className="flex items-center gap-4 rounded-lg border p-4">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-${currentGoal.color}/10`}>
+                    <currentGoal.icon className={`h-6 w-6 text-${currentGoal.color}`} />
+                  </div>
+                  <div>
+                    <p className="font-semibold">{currentGoal.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentGoal.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Objetivo Secundario</CardTitle>
-                  <CardDescription>
-                    Complementa tu objetivo principal
-                  </CardDescription>
-                </div>
-                <Button variant="outline" size="sm">
-                  Agregar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 rounded-lg border p-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-strength/10">
-                  <Dumbbell className="h-6 w-6 text-strength" />
-                </div>
-                <div>
-                  <p className="font-semibold">Mantenimiento de Fuerza</p>
-                  <p className="text-sm text-muted-foreground">
-                    Prevenir perdida muscular durante el entrenamiento de carrera
-                  </p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -287,44 +484,49 @@ export function Profile() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {integrations.map((integration) => (
-                  <div
-                    key={integration.name}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                        <integration.icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{integration.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {integration.connected
-                            ? 'Conectado y sincronizando'
-                            : 'No conectado'}
-                        </p>
-                      </div>
+                {/* Strava */}
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10">
+                      <Activity className="h-5 w-5 text-orange-500" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      {integration.connected ? (
-                        <>
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <Button variant="outline" size="sm">
-                            Desconectar
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-5 w-5 text-muted-foreground" />
-                          <Button variant="default" size="sm">
-                            <Link className="mr-2 h-4 w-4" />
-                            Conectar
-                          </Button>
-                        </>
-                      )}
+                    <div>
+                      <p className="font-medium">Strava</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sincroniza tus actividades de running y ciclismo
+                      </p>
                     </div>
                   </div>
-                ))}
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-5 w-5 text-muted-foreground" />
+                    <Button variant="default" size="sm">
+                      <Link className="mr-2 h-4 w-4" />
+                      Conectar
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Hevy */}
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
+                      <Dumbbell className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Hevy</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sincroniza tus entrenamientos de fuerza
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-5 w-5 text-muted-foreground" />
+                    <Button variant="default" size="sm">
+                      <Link className="mr-2 h-4 w-4" />
+                      Conectar
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
